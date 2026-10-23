@@ -1,0 +1,161 @@
+name: HIGHFLY UNIFIED — S23 playable GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pages.yml"
+      - "scripts/highfly_pages_stage.py"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: highfly-unified-playtest-pages
+  cancel-in-progress: false
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 105
+    steps:
+      - name: Checkout publisher only
+        uses: actions/checkout@v4
+        with:
+          path: publisher
+          persist-credentials: false
+      - name: Verify this publisher cannot touch HIGHFLY production
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "drakentzy07/HIGHFLY-UNIFIED-PLAYTEST"
+          test "$GITHUB_REF" = "refs/heads/main"
+      - name: Checkout PINNED tested HIGHFLY Recovery source
+        uses: actions/checkout@v4
+        with:
+          repository: drakentzy07/cobalt-hollow-lab
+          ref: 87f4fb52389d1aab5223f2663460aa7eb8ab5e97
+          path: game
+          filter: blob:none
+          persist-credentials: false
+      - name: Checkout frozen ClaudeCraft models and world media
+        uses: actions/checkout@v4
+        with:
+          repository: levy-street/world-of-claudecraft
+          ref: 9b57e49c9676d75962700f828cc00a50a9a988b5
+          path: donor-media
+          filter: blob:none
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /public/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: TypeScript and identity, skill, save regression tests
+        working-directory: game
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@10.34.5 --activate
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm exec tsc --noEmit --incremental false
+          pnpm exec vitest run --exclude 'training/tests/**' \
+            tests/highfly_origin_f1_universal_hunter.test.ts \
+            tests/highfly_origin_f23_skill_master.test.ts \
+            tests/highfly_origin_f27_beta.test.ts \
+            tests/highfly_origin_f27_skills.test.ts \
+            tests/highfly_origin_unified_entry.test.ts \
+            tests/highfly_origin_unified_mode_contract.test.ts \
+            tests/highfly_origin_f72_progression.test.ts \
+            tests/highfly_origin_f73_gate.test.ts
+          echo "HIGHFLY_PLAYTEST_TYPES_AND_GUARDS_GREEN=1"
+      - name: Build actual world and all hashed GLB media for Pages subpath
+        working-directory: game
+        shell: bash
+        env:
+          VITE_COBALT_OFFLINE: "1"
+          VITE_COBALT_BASE: "/HIGHFLY-UNIFIED-PLAYTEST/"
+        run: |
+          set -euo pipefail
+          test "$(git -C ../donor-media rev-parse HEAD)" = "9b57e49c9676d75962700f828cc00a50a9a988b5"
+          rsync -a ../donor-media/public/ public/
+          node scripts/build_bundle_pregen.mjs
+          pnpm exec vite build
+          node scripts/build_media_manifest.mjs emit
+          node scripts/build_media_manifest.mjs prune
+          node scripts/highfly_f11_appshell.mjs
+          test -s dist/index.html
+          test -s dist/highfly-origin.webmanifest
+      - name: Stage standalone PLAYTEST, audit resource base and save isolation
+        shell: bash
+        env:
+          HIGHFLY_SOURCE_SHA: 87f4fb52389d1aab5223f2663460aa7eb8ab5e97
+        run: |
+          set -euo pipefail
+          python3 publisher/scripts/highfly_pages_stage.py game/dist "$HIGHFLY_SOURCE_SHA"
+          test -s game/dist/highfly-playtest-qa.json
+          echo "HIGHFLY_PLAYTEST_STANDALONE_STAGED_GREEN=1"
+      - name: Real Chromium S23-size gameplay, LV1 paid Meteor, World/LAB save guard
+        shell: bash
+        working-directory: game
+        env:
+          HIGHFLY_UNIFIED_URL: "http://127.0.0.1:4173/HIGHFLY-UNIFIED-PLAYTEST/"
+        run: |
+          set -euo pipefail
+          command -v google-chrome || command -v chromium || command -v chromium-browser
+          mkdir -p preview
+          ln -s ../dist preview/HIGHFLY-UNIFIED-PLAYTEST
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory preview >/tmp/highfly-unified-playtest.log 2>&1 &
+          P=$!
+          trap 'kill "$P" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45);do
+            if curl -fsSI "$HIGHFLY_UNIFIED_URL" >/dev/null;then break;fi
+            sleep 1
+          done
+          node scripts/highfly_unified_standalone_browser.mjs
+          echo "HIGHFLY_PLAYTEST_S23_CHROMIUM_AND_LV1_SKILL_PURCHASE_GREEN=1"
+      - name: Configure this repository GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload only HIGHFLY PLAYTEST (not production site)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: game/dist
+
+  publish:
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: https://drakentzy07.github.io/HIGHFLY-UNIFIED-PLAYTEST/
+    steps:
+      - name: Publish to independent GitHub Pages
+        uses: actions/deploy-pages@v4
+      - name: Verify actual live version from immutable QA manifest
+        shell: bash
+        env:
+          EXPECTED_SHA: 87f4fb52389d1aab5223f2663460aa7eb8ab5e97
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url="https://drakentzy07.github.io/HIGHFLY-UNIFIED-PLAYTEST/highfly-playtest-qa.json"
+          for attempt in range(25):
+              try:
+                  req=urllib.request.Request(url+"?verify="+os.environ["EXPECTED_SHA"][:12]+"&retry="+str(attempt),
+                      headers={"Cache-Control":"no-cache","User-Agent":"HIGHFLY-STANDALONE-VERIFY"})
+                  with urllib.request.urlopen(req,timeout=30) as res:
+                      if res.status!=200:raise RuntimeError("HTTP_"+str(res.status))
+                      data=json.load(res)
+                  if data.get("sourceCommit")!=os.environ["EXPECTED_SHA"] or data.get("isolatedSaves") is not True:
+                      raise ValueError("NOT_YET_LIVE_OR_UNSAFE")
+                  print("HIGHFLY_S23_STANDALONE_PAGES_LIVE_GREEN=1",url,flush=True)
+                  break
+              except Exception:
+                  if attempt==24:raise
+                  time.sleep(4)
+          PY
