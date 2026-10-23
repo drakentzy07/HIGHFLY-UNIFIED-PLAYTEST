@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: drakentzy07/cobalt-hollow-lab
-          ref: 87f4fb52389d1aab5223f2663460aa7eb8ab5e97
+          ref: a7f52967e3dd2daa0ff4d37a438dab7c77fc133b
           path: game
           filter: blob:none
           persist-credentials: false
@@ -69,6 +69,9 @@ jobs:
             tests/highfly_origin_f23_skill_master.test.ts \
             tests/highfly_origin_f27_beta.test.ts \
             tests/highfly_origin_f27_skills.test.ts \
+            tests/highfly_combat_fluidity_v1.test.ts \
+            tests/highfly_origin_f263_stability.test.ts \
+            tests/highfly_origin_f27_blade_rush.test.ts \
             tests/highfly_origin_unified_entry.test.ts \
             tests/highfly_origin_unified_mode_contract.test.ts \
             tests/highfly_origin_f72_progression.test.ts \
@@ -94,7 +97,7 @@ jobs:
       - name: Stage standalone PLAYTEST, audit resource base and save isolation
         shell: bash
         env:
-          HIGHFLY_SOURCE_SHA: 87f4fb52389d1aab5223f2663460aa7eb8ab5e97
+          HIGHFLY_SOURCE_SHA: a7f52967e3dd2daa0ff4d37a438dab7c77fc133b
         run: |
           set -euo pipefail
           python3 publisher/scripts/highfly_pages_stage.py game/dist "$HIGHFLY_SOURCE_SHA"
@@ -139,7 +142,7 @@ jobs:
       - name: Verify actual live version from immutable QA manifest
         shell: bash
         env:
-          EXPECTED_SHA: 87f4fb52389d1aab5223f2663460aa7eb8ab5e97
+          EXPECTED_SHA: a7f52967e3dd2daa0ff4d37a438dab7c77fc133b
         run: |
           python3 - <<'PY'
           import json,os,time,urllib.request

@@ -8,7 +8,7 @@ y publica su WebGL como una Pages independiente para probar en Samsung S23 Ultra
 
 ## Compilación fijada
 - Origen: `drakentzy07/cobalt-hollow-lab`
-- Commit: `87f4fb52389d1aab5223f2663460aa7eb8ab5e97`
+- Commit: `a7f52967e3dd2daa0ff4d37a438dab7c77fc133b`
 - Mundo / recursos congelados: `levy-street/world-of-claudecraft@9b57e49c9676d75962700f828cc00a50a9a988b5`
 - Patrón: una sola app con World LV1 y LAB de prueba; el laboratorio no cambia la partida.
 - Habilidades: se compran al Veterano con cobre, sin bloqueo por nivel para Hunter Universal.
@@ -22,3 +22,7 @@ el mismo commit. **No copiar assets, saves ni codigo a producción**.
 
 El enlace es público y el guardado WORLD aquí sigue siendo de prueba. No compartir
 datos sensibles ni asumir que el navegador está conectado a servidores multijugador.
+
+## Combat Fluidity 1.0 (23 Oct 2026)
+
+Actualización: combo físico 1–4 más fluido y con una única pulsación anticipada, animaciones menos pesadas, corrección de entrada LTR Samsung y uso de segunda espada de una mano en ranura offhand. Misma app, mismo mapa y mismos guardados de prueba. **No se modifican las partidas originales de Draken.**
